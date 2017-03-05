@@ -23,25 +23,43 @@
 import xbmc
 import xbmcplugin
 import xbmcgui
-import urllib, urllib2, re, math, datetime, os
+import urllib2, re, math, datetime, os
 import sys
+import xbmcaddon
+
+ADDON = xbmcaddon.Addon()
+ADDONID = ADDON.getAddonInfo('id')
+ADDONNAME = ADDON.getAddonInfo('name')
+ADDONVERSION = ADDON.getAddonInfo('version')
+CWD = xbmc.translatePath(ADDON.getAddonInfo('path')).decode('utf-8')
+PROFILE = xbmc.translatePath(ADDON.getAddonInfo('profile')).decode('utf-8')
+LANGUAGE = ADDON.getLocalizedString
+
+BASE_RESOURCE_PATH = os.path.join(CWD, 'resources', 'lib')
+sys.path.append (BASE_RESOURCE_PATH)
 
 ### Script constants
 __scriptname__ = "Yandex Weather"
 __version__    = "1.0.9"
-SITE_HOSTNAME = 'pogoda.yandex.ru'
+#SITE_HOSTNAME = 'pogoda.yandex.ru'
+SITE_HOSTNAME = 'yandex.ru/pogoda'
 SITE_URL      = 'http://%s' % SITE_HOSTNAME
 SITE_ENCODING = 'cp1251'
 XBMC_ENCODING = 'utf-8'
 
+#ADDON = sys.modules['__main__'].ADDON
+#ADDONNAME = sys.modules['__main__'].ADDONNAME
+#ADDONID = sys.modules['__main__'].ADDONID
+
 USER_AGENT = 'Opera/10.60 (X11; openSUSE 11.3/Linux i686; U; ru) Presto/2.6.30 Version/10.60'
 
+print "[SCRIPT] '%s: version %s' initialized!" % (__scriptname__, __version__)
 print "[SCRIPT] '%s: version %s' initialized!" % (__scriptname__, __version__)
 
 url = sys.argv[0]
 handle = int(sys.argv[1])
 #options = sys.argv[2]
-options = ?city=Kursk
+options = "?city=Kursk"
 print "[SCRIPT] 'URL is %s', 'Options is %s'" % (url, options)
 
 window = xbmcgui.Window(12600)
@@ -53,7 +71,7 @@ if (window != None and xbmc.getSkinDir() != 'skin.confluence'):
     window.addControl(image)
 
 def getHttp(plugurl):
-##    plugurl = SITE_URL + urllib.quote(relative_url)
+##    plugurl = SITE_URL + urllib2.quote(relative_url)
     print '[%s] getHttp: full url=%s)' % (__scriptname__, plugurl)
 
     request = urllib2.Request(plugurl)
@@ -119,6 +137,12 @@ def getDewPoint(temperature, humidity):
 def getFeelsLike(temperature, wind_speed):
     return round(13.12 + 0.6215 * temperature - 11.37 * math.pow(wind_speed, 0.16) + 0.3965 * temperature * math.pow(wind_speed, 0.16))
 
+def log(txt):
+    if (ADDON.getSetting('log_enabled') == 'true'):
+        if isinstance (txt,str):
+            txt = txt.decode('utf-8')
+        message = u'%s: %s' % (ADDONID, txt)
+        xbmc.log(msg=message.encode('utf-8'), level=xbmc.LOGDEBUG)
 
 http = getHttp('http://op.yandex.ru/data/traffic.xml')
 rep = re.compile('<rate>(.+?)</rate>').findall(http)
@@ -135,13 +159,21 @@ if len(rep) > 0:
 if traff_image != None:
     window.setProperty('TrafficIndex', os.path.join( os.path.dirname(__file__), traff_image))
 
-if (url.endswith('/find')):
+#if (url.endswith('/find')):
+if ( 1 == 1 ):
     ## sample options: ?city=London
     params = dict([part.split('=') for part in options.lstrip('?').split('&')])
+    print("!!!START!!!!!!!!!!=>")
+    print('\n'.join(map(str, params)))
+    print("!!!END!!!!!!!!!!=>")
+    print(SITE_URL + urllib2.quote('/search/?text=%s' % (params['city'])))
+    print("!!!END2!!!!!!!!!!=>")
     ##dlg = xbmcgui.DialogProgress()
     ##dlg.create(__scriptname__, 'Выполняется поиск...')
-    http = getHttp(SITE_URL + urllib.quote('/search/?text=%s' % (params['city'].decode(XBMC_ENCODING).encode(SITE_ENCODING))))
+#    http = getHttp(SITE_URL + urllib2.quote('/search/?text=%s' % (params['city'].decode(XBMC_ENCODING).encode(SITE_ENCODING))))
+    http = getHttp(SITE_URL + urllib2.quote('/search/?text=%s' % (params['city'])))
     rep = re.compile('<a href="/(.+?)/">(.+?)</a></li>').findall(http)
+    log("!!!!!!!!!!!!!=>".str(len(rep)) )
     for arr in rep:
         listitem = xbmcgui.ListItem(arr[1], arr[0])
         xbmcplugin.addDirectoryItem(handle, url, listitem, False)
@@ -155,7 +187,7 @@ if (url.endswith('/find')):
 elif (url.endswith('/getweather')):
     ## sample options: ?area=UPXX0016
     params = dict([part.split('=') for part in options.lstrip('?').split('&')])
-    http = getHttp(SITE_URL + urllib.quote('/%s/' % (params['area'].decode(XBMC_ENCODING).encode(SITE_ENCODING))))
+    http = getHttp(SITE_URL + urllib2.quote('/%s/' % (params['area'].decode(XBMC_ENCODING).encode(SITE_ENCODING))))
 
     rep = re.compile('<h2><b>(.+?)</b>').findall(http)
     if len(rep) > 0:
